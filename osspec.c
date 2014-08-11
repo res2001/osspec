@@ -11,14 +11,17 @@
 
 
 #ifndef _WIN32
+#include <sys/time.h>
+#include <errno.h>
+
 static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
     clock_gettime(CLOCK_REALTIME, timeToWait);
 
-    timeToWait->tv_sec += timeout/1000 + 1;
-    timeToWait->tv_nsec += 10e6*((timeout+1)%1000);
-    while (timeToWait->tv_nsec >= 10e9) {
+    timeToWait->tv_sec += timeout/1000;
+    timeToWait->tv_nsec += 1e6*((timeout+1)%1000);
+    while (timeToWait->tv_nsec >= 1e9) {
         timeToWait->tv_sec ++;
-        timeToWait->tv_nsec -=10e9;
+        timeToWait->tv_nsec -=1e9;
     }
 }
 #endif
@@ -52,19 +55,32 @@ t_mutex osspec_mutex_create(void) {
 
 
 //захват мьютекса
-int32_t osspec_mutex_lock(t_mutex handle, uint32_t tout) {
-    int32_t res = 0;
+int32_t osspec_mutex_lock(t_mutex handle, uint32_t timeout) {
+    int32_t err = 0;
     if (handle == OSSPEC_INVALID_MUTEX)
-        res = OSSPEC_ERR_MUTEX_INVALID_HANDLE;
+        err = OSSPEC_ERR_MUTEX_INVALID_HANDLE;
 #ifdef _WIN32
     if (!res) {
-        res = WaitForSingleObject(handle, tout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_MUTEX_LOCK_TOUT;
+        res = WaitForSingleObject(handle, timeout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_MUTEX_LOCK_TOUT;
     }
 #else
-    if (!res && pthread_mutex_lock(handle))
-         res = OSSPEC_ERR_MUTEX_LOCK_TOUT;
+    if (!err) {
+        int wt_res;
+        if (timeout == OSSPEC_TIMEOUT_INFINITY) {
+            wt_res = pthread_mutex_lock(handle);
+        } else {
+            struct timespec timeToWait;
+            f_get_abs_time(timeout, &timeToWait);
+            wt_res = pthread_mutex_timedlock(handle, &timeToWait);
+        }
+        if (wt_res == ETIMEDOUT) {
+            err = OSSPEC_ERR_MUTEX_LOCK_TOUT;
+        } else if (wt_res != 0) {
+            err = OSSPEC_ERR_MUTEX_INVALID_HANDLE;
+        }
+    }
 #endif
-    return res;
+    return err;
 }
 
 //освобождение мьютекса
@@ -107,8 +123,6 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
     #ifdef _WIN32
 
     #else
-        #include <sys/time.h>
-        #include <errno.h>
         struct st_osspec_event {
             pthread_cond_t cond;
             pthread_mutex_t mutex;
@@ -185,12 +199,15 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         if (err == 0) {
             struct timespec timeToWait;
             int out = 0;
-            f_get_abs_time(timeout, &timeToWait);
+            if (timeout != OSSPEC_TIMEOUT_INFINITY)
+                f_get_abs_time(timeout, &timeToWait);
 
             while (!out && !err) {
                 pthread_mutex_lock(&event->mutex);
                 if (!event->val) {
-                    int wait_res = pthread_cond_timedwait(&event->cond,&event->mutex, &timeToWait);
+                    int wait_res = timeout == OSSPEC_TIMEOUT_INFINITY ?
+                                pthread_cond_wait(&event->cond,&event->mutex) :
+                                pthread_cond_timedwait(&event->cond,&event->mutex, &timeToWait);
                     if (event->val) {
                         out = 1;
                     } else if (wait_res == ETIMEDOUT) {
@@ -223,12 +240,16 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         int32_t err = (thread != OSSPEC_INVALID_THREAD) ?
             0 : OSSPEC_ERR_THREAD_INVALID_HANDLE;
         if (!err) {
-            struct timespec timeToWait;           
+
             int wt_res;
 
-            f_get_abs_time(timeout, &timeToWait);
-
-            wt_res = pthread_timedjoin_np(thread, NULL, &timeToWait);
+            if (timeout != OSSPEC_TIMEOUT_INFINITY) {
+                struct timespec timeToWait;
+                f_get_abs_time(timeout, &timeToWait);
+                wt_res = pthread_timedjoin_np(thread, NULL, &timeToWait);
+            } else {
+                wt_res = pthread_join(thread, NULL);
+            }
             if (wt_res ==  ETIMEDOUT) {
                 err = OSSPEC_ERR_THREAD_WAIT_TOUT;
             } else if (wt_res != 0) {

@@ -21,6 +21,9 @@
     #include <pthread.h>
 #endif
 
+#define OSSPEC_TIMEOUT_INFINITY  ((uint32_t)-1)
+
+
 
 #ifdef OSSPEC_USE_MUTEX
     #ifdef _WIN32
