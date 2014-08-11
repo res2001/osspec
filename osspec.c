@@ -10,6 +10,19 @@
 #include <stdlib.h>
 
 
+#ifndef _WIN32
+static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
+    clock_gettime(CLOCK_REALTIME, timeToWait);
+
+    timeToWait->tv_sec += timeout/1000 + 1;
+    timeToWait->tv_nsec += 10e6*((timeout+1)%1000);
+    while (timeToWait->tv_nsec >= 10e9) {
+        timeToWait->tv_sec ++;
+        timeToWait->tv_nsec -=10e9;
+    }
+}
+#endif
+
 #ifdef OSSPEC_USE_MUTEX
 /***************************************************************************
   Вспомогательная функции для работы с мьютексами....
@@ -87,11 +100,13 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 #endif
 
 
+
+
+
 #ifdef OSSPEC_USE_EVENTS
     #ifdef _WIN32
 
     #else
-
         #include <sys/time.h>
         #include <errno.h>
         struct st_osspec_event {
@@ -100,7 +115,6 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
             int flags;
             int val;
         };
-
     #endif
 
 
@@ -170,12 +184,8 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
             0 : OSSPEC_ERR_EVENT_INVALID_HANDLE;
         if (err == 0) {
             struct timespec timeToWait;
-            struct timeval now;
             int out = 0;
-            gettimeofday(&now,NULL);
-
-            timeToWait.tv_sec = now.tv_sec + timeout/1000;
-            timeToWait.tv_nsec = (now.tv_usec + 1000*(timeout%1000))*1000;
+            f_get_abs_time(timeout, &timeToWait);
 
             while (!out && !err) {
                 pthread_mutex_lock(&event->mutex);
@@ -213,13 +223,10 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         int32_t err = (thread != OSSPEC_INVALID_THREAD) ?
             0 : OSSPEC_ERR_THREAD_INVALID_HANDLE;
         if (!err) {
-            struct timespec timeToWait;
-            struct timeval now;
+            struct timespec timeToWait;           
             int wt_res;
-            gettimeofday(&now,NULL);
 
-            timeToWait.tv_sec = now.tv_sec + timeout/1000;
-            timeToWait.tv_nsec = (now.tv_usec + 1000*(timeout%1000))*1000;
+            f_get_abs_time(timeout, &timeToWait);
 
             wt_res = pthread_timedjoin_np(thread, NULL, &timeToWait);
             if (wt_res ==  ETIMEDOUT) {
