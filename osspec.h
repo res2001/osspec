@@ -17,12 +17,11 @@
 
 #ifdef _WIN32
     #include <Windows.h>
+    #define OSSPEC_TIMEOUT_INFINITY  INFINITE
 #else
     #include <pthread.h>
+    #define OSSPEC_TIMEOUT_INFINITY  ((uint32_t)-1)
 #endif
-
-#define OSSPEC_TIMEOUT_INFINITY  ((uint32_t)-1)
-
 
 
 #ifdef OSSPEC_USE_MUTEX
@@ -64,16 +63,18 @@
 
         #define OSSPEC_INVALID_THREAD NULL
 
-        #define OSSPEC_THREAD_FUNC_RET DWORD WINAPI
+        #define OSSPEC_THREAD_FUNC_RET  DWORD
+        #define OSSPEC_THREAD_FUNC_CALL WINAPI
     #else
         typedef pthread_t t_thread;
 
         #define OSSPEC_INVALID_THREAD ((pthread_t)-1)
 
         #define OSSPEC_THREAD_FUNC_RET void*
+        #define OSSPEC_THREAD_FUNC_CALL
     #endif
 
-    typedef OSSPEC_THREAD_FUNC_RET (*t_osspec_thread_func)(void *arg);
+    typedef OSSPEC_THREAD_FUNC_RET (OSSPEC_THREAD_FUNC_CALL *t_osspec_thread_func)(void *arg);
 
     t_thread osspec_thread_create(t_osspec_thread_func func, void *arg, uint32_t flags);
     int32_t  osspec_thread_wait(t_thread thread, uint32_t timeout);

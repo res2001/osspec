@@ -35,8 +35,6 @@ t_mutex osspec_mutex_create(void) {
     t_mutex hnd;
 #ifdef _WIN32
     hnd = CreateMutex(NULL, FALSE, NULL);
-    if (hnd==NULL)
-        hnd = OSSPEC_INVALID_MUTEX;
 #else
     hnd = (t_mutex)malloc(sizeof(pthread_mutex_t));
     if (hnd!=NULL) {
@@ -60,8 +58,8 @@ int32_t osspec_mutex_lock(t_mutex handle, uint32_t timeout) {
     if (handle == OSSPEC_INVALID_MUTEX)
         err = OSSPEC_ERR_MUTEX_INVALID_HANDLE;
 #ifdef _WIN32
-    if (!res) {
-        res = WaitForSingleObject(handle, timeout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_MUTEX_LOCK_TOUT;
+    if (!err) {
+        err = WaitForSingleObject(handle, timeout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_MUTEX_LOCK_TOUT;
     }
 #else
     if (!err) {
@@ -133,11 +131,15 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 
 
     t_event osspec_event_create(int32_t flags) {
-        t_event evt = malloc(sizeof(struct st_osspec_event));
+        t_event evt;
+    #ifdef _WIN32
+        evt = CreateEvent(NULL, TRUE, FALSE, NULL);
+    #else
+        evt = malloc(sizeof(struct st_osspec_event));
         if (evt!=NULL) {
             if (pthread_mutex_init(&evt->mutex, NULL) != 0) {
                 free(evt);
-                evt = NULL;
+                   evt = NULL;
             } else {
                 if (pthread_cond_init(&evt->cond, NULL)!= 0) {
                     pthread_mutex_destroy(&evt->mutex);
@@ -149,6 +151,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
                 }
             }
         }
+    #endif
         return evt;
     }
 
@@ -172,23 +175,34 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         int32_t res = (event != OSSPEC_INVALID_EVENT) ?
                      0 : OSSPEC_ERR_EVENT_INVALID_HANDLE;
         if (res == 0) {
+    #ifdef _WIN32
+            if (!SetEvent(event))
+                res = OSSPEC_ERR_EVENT_INVALID_HANDLE;
+    #else
             pthread_mutex_lock(&event->mutex);
             if (!event->val) {
                 event->val = 1;
                 pthread_cond_signal(&event->cond);
             }
             pthread_mutex_unlock(&event->mutex);
+    #endif
         }
         return res;
+
     }
 
     int32_t osspec_event_clear(t_event event) {
         int32_t res = (event != OSSPEC_INVALID_EVENT) ?
                      0 : OSSPEC_ERR_EVENT_INVALID_HANDLE;
         if (res == 0) {
+    #ifdef _WIN32
+            if (!ResetEvent(event))
+                res = OSSPEC_ERR_EVENT_INVALID_HANDLE;
+    #else
             pthread_mutex_lock(&event->mutex);
             event->val = 0;
             pthread_mutex_unlock(&event->mutex);
+    #endif
         }
         return res;
     }
@@ -197,6 +211,9 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         int32_t err = (event != OSSPEC_INVALID_EVENT) ?
             0 : OSSPEC_ERR_EVENT_INVALID_HANDLE;
         if (err == 0) {
+    #ifdef _WIN32
+            err = WaitForSingleObject(event, timeout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_EVENT_WAIT_TOUT;
+    #else
             struct timespec timeToWait;
             int out = 0;
             if (timeout != OSSPEC_TIMEOUT_INFINITY)
@@ -220,6 +237,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
                 }
                 pthread_mutex_unlock(&event->mutex);
             }
+    #endif
         }
         return err;
     }
@@ -230,9 +248,13 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 #ifdef OSSPEC_USE_THREADS
     t_thread osspec_thread_create(t_osspec_thread_func func, void *arg, uint32_t flags) {
         t_thread thread;
+    #ifdef _WIN32
+        thread = CreateThread(NULL, 0, func, arg, 0, NULL);
+    #else
         if (pthread_create(&thread, NULL, func, arg) != 0)  {
             thread = OSSPEC_INVALID_THREAD;
         }
+    #endif
         return thread;
     }
 
@@ -240,7 +262,9 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
         int32_t err = (thread != OSSPEC_INVALID_THREAD) ?
             0 : OSSPEC_ERR_THREAD_INVALID_HANDLE;
         if (!err) {
-
+    #ifdef _WIN32
+            err = WaitForSingleObject(thread, timeout)==WAIT_OBJECT_0 ? 0 : OSSPEC_ERR_THREAD_WAIT_TOUT;
+    #else
             int wt_res;
 
             if (timeout != OSSPEC_TIMEOUT_INFINITY) {
@@ -255,6 +279,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
             } else if (wt_res != 0) {
                 err = OSSPEC_ERR_THREAD_INVALID_HANDLE;
             }
+    #endif
         }
         return err;
     }
