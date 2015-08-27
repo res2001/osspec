@@ -9,7 +9,11 @@
 #ifndef OSSPEC_H_
 #define OSSPEC_H_
 
-#ifndef _WIN32
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if !defined _WIN32 && !defined _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
 
@@ -78,6 +82,11 @@
 
     t_thread osspec_thread_create(t_osspec_thread_func func, void *arg, uint32_t flags);
     int32_t  osspec_thread_wait(t_thread thread, uint32_t timeout);
+#endif
+
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

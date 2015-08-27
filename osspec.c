@@ -267,13 +267,17 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
     #else
             int wt_res;
 
+#ifndef OSSPEC_THREAD_NO_TIMEOUT
             if (timeout != OSSPEC_TIMEOUT_INFINITY) {
                 struct timespec timeToWait;
                 f_get_abs_time(timeout, &timeToWait);
                 wt_res = pthread_timedjoin_np(thread, NULL, &timeToWait);
             } else {
+#endif
                 wt_res = pthread_join(thread, NULL);
+#ifndef OSSPEC_THREAD_NO_TIMEOUT
             }
+#endif
             if (wt_res ==  ETIMEDOUT) {
                 err = OSSPEC_ERR_THREAD_WAIT_TOUT;
             } else if (wt_res != 0) {
