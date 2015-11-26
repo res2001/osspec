@@ -14,13 +14,14 @@
 #include <sys/time.h>
 #include <errno.h>
 
-static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
+
+static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {    
     clock_gettime(CLOCK_REALTIME, timeToWait);
 
     timeToWait->tv_sec += timeout/1000;
-    timeToWait->tv_nsec += 1e6*((timeout+1)%1000);
+    timeToWait->tv_nsec += 1e6*(timeout%1000) + 1;
     while (timeToWait->tv_nsec >= 1e9) {
-        timeToWait->tv_sec ++;
+        timeToWait->tv_sec++;
         timeToWait->tv_nsec -=1e9;
     }
 }
