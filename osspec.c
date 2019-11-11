@@ -15,13 +15,20 @@
 #include <errno.h>
 
 static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
+#ifdef NO_CLOCKGETTIME
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    timeToWait->tv_sec = tv.tv_sec;
+    timeToWait->tv_nsec = tv.tv_usec * 1000;
+#else
     clock_gettime(CLOCK_REALTIME, timeToWait);
+#endif
 
     timeToWait->tv_sec += timeout/1000;
-    timeToWait->tv_nsec += 1e6*((timeout+1)%1000);
-    while (timeToWait->tv_nsec >= 1e9) {
+    timeToWait->tv_nsec += 1000000*((timeout+1)%1000);
+    while (timeToWait->tv_nsec >= 1000000000) {
         timeToWait->tv_sec ++;
-        timeToWait->tv_nsec -=1e9;
+        timeToWait->tv_nsec -=1000000000;
     }
 }
 #endif
