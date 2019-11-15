@@ -2,9 +2,9 @@
 #define OS_SPEC_CFG_H_
 
 
-#define OSSPEC_USE_MUTEX
-#define OSSPEC_USE_EVENTS
-#define OSSPEC_USE_THREADS
+//#define OSSPEC_USE_MUTEX
+//#define OSSPEC_USE_EVENTS
+//#define OSSPEC_USE_THREADS
 
 
 #define OSSPEC_ERR_MUTEX_INVALID_HANDLE     -1
