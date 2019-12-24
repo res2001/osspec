@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 
-#ifdef OSSPEC_USE_MUTEX
+#ifndef NO_OSSPEC_USE_MUTEX
     #ifdef _WIN32
         typedef HANDLE t_mutex;
     #else
@@ -43,7 +43,7 @@ extern "C" {
     int32_t osspec_mutex_destroy(t_mutex handle);
 #endif
 
-#ifdef OSSPEC_USE_EVENTS
+#ifndef NO_OSSPEC_USE_EVENTS
     #ifdef _WIN32
         typedef HANDLE t_event;
     #else
@@ -61,7 +61,7 @@ extern "C" {
 #endif
 
 
-#ifdef OSSPEC_USE_THREADS
+#ifndef NO_OSSPEC_USE_THREADS
     #ifdef _WIN32
         typedef HANDLE t_thread;
 

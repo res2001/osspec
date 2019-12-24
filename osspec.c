@@ -34,7 +34,7 @@ static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
 }
 #endif
 
-#ifdef OSSPEC_USE_MUTEX
+#ifndef NO_OSSPEC_USE_MUTEX
 /***************************************************************************
   Вспомогательная функции для работы с мьютексами....
   **************************************************************************/
@@ -72,6 +72,7 @@ int32_t osspec_mutex_lock(t_mutex handle, uint32_t timeout) {
 #else
     if (!err) {
         int wt_res;
+    #ifdef HAVE_PTHREAD_MUTEX_TIMEDLOCK
         if (timeout == OSSPEC_TIMEOUT_INFINITY) {
             wt_res = pthread_mutex_lock(handle);
         } else {
@@ -79,6 +80,10 @@ int32_t osspec_mutex_lock(t_mutex handle, uint32_t timeout) {
             f_get_abs_time(timeout, &timeToWait);
             wt_res = pthread_mutex_timedlock(handle, &timeToWait);
         }
+    #else   // HAVE_PTHREAD_MUTEX_TIMEDLOCK
+        (void)timeout;
+        wt_res = pthread_mutex_lock(handle);
+    #endif  // HAVE_PTHREAD_MUTEX_TIMEDLOCK
         if (wt_res == ETIMEDOUT) {
             err = OSSPEC_ERR_MUTEX_LOCK_TOUT;
         } else if (wt_res != 0) {
@@ -125,7 +130,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 
 
 
-#ifdef OSSPEC_USE_EVENTS
+#ifndef NO_OSSPEC_USE_EVENTS
     #ifdef _WIN32
 
     #else
@@ -253,7 +258,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 #endif
 
 
-#ifdef OSSPEC_USE_THREADS
+#ifndef NO_OSSPEC_USE_THREADS
     t_thread osspec_thread_create(t_osspec_thread_func func, void *arg, uint32_t flags) {
         t_thread thread;
     #ifdef _WIN32
