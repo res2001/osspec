@@ -34,7 +34,7 @@ static void f_get_abs_time(uint32_t timeout, struct timespec *timeToWait) {
 }
 #endif
 
-#ifndef NO_OSSPEC_USE_MUTEX
+#ifdef OSSPEC_USE_MUTEX
 /***************************************************************************
   Вспомогательная функции для работы с мьютексами....
   **************************************************************************/
@@ -130,7 +130,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 
 
 
-#ifndef NO_OSSPEC_USE_EVENTS
+#ifdef OSSPEC_USE_EVENTS
     #ifdef _WIN32
 
     #else
@@ -258,7 +258,7 @@ int32_t  osspec_mutex_destroy(t_mutex handle) {
 #endif
 
 
-#ifndef NO_OSSPEC_USE_THREADS
+#ifdef OSSPEC_USE_THREADS
     t_thread osspec_thread_create(t_osspec_thread_func func, void *arg, uint32_t flags) {
         t_thread thread;
     #ifdef _WIN32
